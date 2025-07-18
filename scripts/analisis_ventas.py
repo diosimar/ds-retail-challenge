@@ -1,7 +1,10 @@
 # cargue de librerias 
 import pandas as pd 
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick 
+import seaborn as sns
+from sklearn.linear_model import LinearRegression
 
 # Cargar los datos de los archivos "productos.csv" y "ventas.csv" en dataframes de pandas.
 productos = pd.read_csv(r'..\Data\processed\productos_processed.csv')
@@ -276,4 +279,49 @@ plt.ylabel('Número de PDVs')
 plt.xticks(rotation=0)
 plt.grid(axis='y', linestyle='--')
 plt.savefig(r'..\outputs\comparativo_ventas_SALUS_FRUTTE_CERO_ANANA_por_PDV_Mes.png')
+plt.show()
+
+# grafico de tendencia  de precio unitario y cantidad vendida en PDVs 
+
+# === GRAFICA ANANA ===
+fig, ax1 = plt.subplots()
+color = 'tab:blue'
+ax1.set_xlabel('Mes')
+ax1.set_ylabel('Unidades vendidas', color=color)
+ax1.plot(ventas_mensuales_anana.index, ventas_mensuales_anana['cant_vta'], marker='o', color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()
+color = 'tab:red'
+ax2.set_ylabel('Precio unitario', color=color)
+ax2.plot(ventas_mensuales_anana.index, ventas_mensuales_anana['precio_unitario'], marker='o', color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+
+plt.title("Evolución mensual de ventas y precio de SALUS FRUTTE CERO ANANA")
+fig.tight_layout()
+plt.savefig(r'..\outputs\Evolucion_mensual_ventas_precio _SALUS_FRUTTE_CERO_ANANA_por_PDV_Mes.png')
+plt.show()
+
+# ======================
+# Pregunta 6
+# ======================
+# Relación entre ventas y factores relevantes + sensibilidad al precio
+
+# Pregunta 6
+ventas_merged['precio_unitario'] = ventas_merged['imp_vta'] / ventas_merged['cant_vta']
+data_elasticidad = ventas_merged.groupby(['codigo_barras'])[['cant_vta', 'precio_unitario']].mean().reset_index()
+data_elasticidad['log_ventas'] = np.log(data_elasticidad['cant_vta'])
+data_elasticidad['log_precio'] = np.log(data_elasticidad['precio_unitario'])
+
+model = LinearRegression()
+model.fit(data_elasticidad[['log_precio']], data_elasticidad['log_ventas'])
+elasticidad_precio = model.coef_[0]
+
+# === GRAFICA ELASTICIDAD ===
+sns.regplot(x='log_precio', y='log_ventas', data=data_elasticidad, line_kws={'color': 'red'})
+plt.title(f"Relación log-log precio vs ventas\nElasticidad estimada: {elasticidad_precio:.2f}")
+plt.xlabel("Log(Precio)")
+plt.ylabel("Log(Ventas)")
+plt.tight_layout()
+plt.savefig(r'..\outputs\Relación(log-log)_precio_vs_ventas_Elasticidad_estimada.png')
 plt.show()
