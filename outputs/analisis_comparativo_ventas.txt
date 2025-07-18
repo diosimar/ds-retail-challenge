@@ -1,0 +1,8 @@
+--- Análisis Comparativo de Ventas: Aguas Saborizadas ---
+==================================================
+              Periodo  Ventas Totales
+       Junio - Agosto          125197
+Setiembre - Noviembre          233998
+--------------------------------------------------
+Variación Porcentual: 86.90%
+==================================================

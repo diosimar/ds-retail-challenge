@@ -1,7 +1,7 @@
 # cargue de librerias 
 import pandas as pd 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
+import matplotlib.ticker as mtick 
 
 # Cargar los datos de los archivos "productos.csv" y "ventas.csv" en dataframes de pandas.
 productos = pd.read_csv(r'..\Data\processed\productos_processed.csv')
@@ -134,3 +134,146 @@ with open(r'..\outputs\mejor_pdv_por_producto.txt', "w", encoding="utf-8") as f:
 # Pregunta 4
 # ======================
 # Variación porcentual de ventas: sep-nov vs jun-ago
+
+
+ventas_cat = ventas_merged.copy()
+ventas_cat['mes'] = ventas_cat['fecha_comercial'].dt.month
+
+ventas_ago = ventas_cat[ventas_cat['mes'].isin([6, 7, 8])]['cant_vta'].sum()
+ventas_nov = ventas_cat[ventas_cat['mes'].isin([9, 10, 11])]['cant_vta'].sum()
+
+variacion_pct = ((ventas_nov - ventas_ago) / ventas_ago) * 100
+variacion_pct
+
+# --- SALIDA DE DATOS EN CONSOLA ---
+print("="*50)
+print("Análisis Comparativo de Ventas: Aguas Saborizadas")
+print("="*50)
+
+# Crear un DataFrame para una visualización clara
+
+# Crear un DataFrame para una visualización clara
+df_data = {
+    'Periodo': ['Junio - Agosto', 'Setiembre - Noviembre'],
+    'Ventas Totales': [ventas_ago, ventas_nov]
+}
+df_display = pd.DataFrame(df_data)
+print(df_display.to_string(index=False))
+print("-"*50)
+print(f"Variación Porcentual: {variacion_pct:,.2f}%")
+print("="*50)
+
+# --- GENERACIÓN DEL GRÁFICO COMPARATIVO ---
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Datos para el gráfico
+periodos = ['Junio - Agosto', 'Set. - Nov.']
+ventas = [ventas_ago, ventas_nov]
+colores = ['#60a5fa', '#22c55e']
+
+# Crear las barras
+bars = ax.bar(periodos, ventas, color=colores)
+
+# Añadir etiquetas de datos sobre las barras
+for bar in bars:
+    yval = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2.0, yval, f'{yval:,.0f}', va='bottom', ha='center', fontsize=12)
+
+# Configuración del gráfico
+ax.set_ylabel('Ventas Totales')
+ax.set_title('Comparativo de Ventas: Aguas Saborizadas', fontsize=16, fontweight='bold')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.yaxis.grid(True, linestyle='--', which='major', color='grey', alpha=.25)
+
+# Formatear el eje Y para que muestre números con separadores
+ax.get_yaxis().set_major_formatter(
+    mtick.FuncFormatter(lambda x, p: format(int(x), ','))
+)
+
+# Ajustar el padding del eje Y
+ax.margins(y=0.1)
+
+plt.tight_layout()
+# Save the plot to a file
+plt.savefig(r'..\outputs\comparativo_ventas.png')
+plt.show()
+
+# Ajustar colección de  salidas en formato strings
+output = []
+output.append("--- Análisis Comparativo de Ventas: Aguas Saborizadas ---")
+output.append("="*50)
+
+# Create a DataFrame for a visualization clear
+df_data = {
+    'Periodo': ['Junio - Agosto', 'Setiembre - Noviembre'],
+    'Ventas Totales': [ventas_ago, ventas_nov]
+}
+df_display = pd.DataFrame(df_data)
+output.append(df_display.to_string(index=False))
+output.append("-"*50)
+output.append(f"Variación Porcentual: {variacion_pct:,.2f}%")
+output.append("="*50)
+
+# Join the output lines
+output_text = "\n".join(output)
+
+# Save the collected output to a text file
+with open(r"..\outputs\analisis_comparativo_ventas.txt", "w", encoding="utf-8") as f:
+    f.write(output_text)
+
+# ======================
+# Pregunta 5
+# ======================
+# Buscar causa probable del aumento de SALUS FRUTTE CERO ANANA 1,65L en septiembre
+
+# Obtener código de barras
+codigo_anana = productos[productos['descripcion'].str.contains("SALUS FRUTTE CERO ANANA", case=False)]['codigo_barras'].iloc[0]
+
+# Filtrar ventas de este producto
+ventas_anana = ventas_merged[ventas_merged['codigo_barras'] == codigo_anana].copy()
+ventas_anana['mes'] = ventas_anana['fecha_comercial'].dt.month
+
+ventas_mensuales_anana = ventas_anana.groupby('mes')[['cant_vta', 'imp_vta']].sum()
+
+# Ver precios promedios por mes
+ventas_mensuales_anana['precio_unitario'] = ventas_mensuales_anana['imp_vta'] / ventas_mensuales_anana['cant_vta']
+
+with open(r"..\outputs\ventas_mensuales_SalusFrutteCeroAnana.txt", "w") as f:
+    f.write(ventas_mensuales_anana.to_string())
+# Se puede comparar si en septiembre hubo rebaja de precio que  aumento el consumo de la bebida, Se recomienda analizar 
+# aspectos como si en el mes de septiembre se presentaron más PDVs activos que iniciaron la venta del produto o compementar 
+# información de si se ejecutarón nuevas campañas o tiene relación directa con la estacionalidad climatica de la zona.
+# --------------- se evalua  la cantidad de pvs que vendieron el producto por cada mes----------------
+
+# Contar PDVs únicos por mes para este producto
+pdv_por_mes_anana = ventas_anana.groupby('mes')['pdv_codigo'].nunique()
+
+# Comparar la cantidad de PDVs en septiembre con meses anteriores
+print("\nCantidad de PDVs que vendieron SALUS FRUTTE CERO ANANA por mes:")
+print(pdv_por_mes_anana)
+
+# Identificar si la cantidad de PDVs que vendieron este producto aumentó en septiembre
+meses_anteriores_sept = pdv_por_mes_anana[pdv_por_mes_anana.index < 9]
+if not meses_anteriores_sept.empty:
+    promedio_pdv_anteriores = meses_anteriores_sept.mean()
+    pdv_septiembre = pdv_por_mes_anana.get(9, 0) # Get value for month 9, default to 0 if not present
+    if pdv_septiembre > promedio_pdv_anteriores:
+        print(f"\nLa cantidad de PDVs que vendieron 'SALUS FRUTTE CERO ANANA' aumentó en septiembre ({pdv_septiembre}) comparado con el promedio de meses anteriores ({promedio_pdv_anteriores:.2f}).")
+    elif pdv_septiembre < promedio_pdv_anteriores:
+        print(f"\nLa cantidad de PDVs que vendieron 'SALUS FRUTTE CERO ANANA' disminuyó en septiembre ({pdv_septiembre}) comparado con el promedio de meses anteriores ({promedio_pdv_anteriores:.2f}).")
+    else:
+        print(f"\nLa cantidad de PDVs que vendieron 'SALUS FRUTTE CERO ANANA' se mantuvo similar en septiembre ({pdv_septiembre}) comparado con el promedio de meses anteriores ({promedio_pdv_anteriores:.2f}).")
+else:
+     print("\nNo hay datos de meses anteriores a septiembre para comparar la cantidad de PDVs que vendieron 'SALUS FRUTTE CERO ANANA'.")
+
+# Opcional: Visualización para entender la tendencia de PDVs a lo largo del tiempo para este producto
+plt.figure(figsize=(10, 6))
+pdv_por_mes_anana.plot(kind='bar', color='skyblue')
+plt.title('Número de PDVs que Vendieron SALUS FRUTTE CERO ANANA por Mes')
+plt.xlabel('Mes')
+plt.ylabel('Número de PDVs')
+plt.xticks(rotation=0)
+plt.grid(axis='y', linestyle='--')
+plt.savefig(r'..\outputs\comparativo_ventas_SALUS_FRUTTE_CERO_ANANA_por_PDV_Mes.png')
+plt.show()
